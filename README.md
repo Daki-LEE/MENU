@@ -2,7 +2,7 @@
 
 관악학사·도봉학사 식단을 홈 화면 위젯으로 보여주는 안드로이드 앱이에요.
 
-**[APK 받기](https://raw.githubusercontent.com/Daki-LEE/MENU/main/GWHS_MENU.apk)** · 현재 버전 v1.0.2
+**[설치 안내 페이지](https://daki-lee.github.io/MENU/)** · [APK 바로 받기](https://raw.githubusercontent.com/Daki-LEE/MENU/main/GWHS_MENU.apk) · 현재 버전 v1.0.2
 
 ## 설치
 1. 위 링크로 APK 받기

@@ -1,0 +1,747 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="강원학사 관악·도봉 식단을 홈 화면 위젯으로 보는 법">
+<meta property="og:title" content="강원학사 식단 위젯">
+<meta property="og:description" content="다음 끼니 메뉴를 홈 화면에서 바로 보기. 안드로이드·아이폰 설치 안내">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
+<title>강원학사 식단 위젯</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* 앱·위젯과 같은 톤(어두운 밤색 + 주황). 폰 한 화면 폭, 한 줄 흐름: 위젯 미리보기 → 폰 고르기 → 설치 순서 */
+:root {
+  --bg: #1a1410;
+  --card: #231b14;
+  --raise: #2e241b;
+  --line: #3d3125;
+  --fg: #f3ece4;
+  --dim: #a8998a;
+  --accent: #d18a2e;
+  --accent-ink: #1a1108;
+  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-text-size-adjust: 100%;
+}
+.wrap {
+  max-width: 440px;
+  margin: 0 auto;
+  padding-block: 24px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.view { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+h1, h2 { margin: 0; font-weight: 700; letter-spacing: -0.02em; text-wrap: balance; }
+h1 { font-size: 1.75rem; line-height: 1.25; }
+h2 { font-size: 1.3rem; line-height: 1.3; }
+p { margin: 0; }
+.label { font-size: 0.78rem; font-weight: 500; letter-spacing: 0.04em; color: var(--accent); }
+.dim { color: var(--dim); }
+a { color: var(--accent); }
+button { font: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+.intro { display: flex; flex-direction: column; gap: 8px; }
+
+/* 인스타 내장 브라우저 안내 */
+.inapp {
+  background: var(--raise); border: 1px solid var(--accent);
+  border-radius: 12px; padding: 12px 14px;
+  font-size: 0.9rem; display: flex; flex-direction: column; gap: 2px;
+}
+
+/* 위젯 미리보기: 안드로이드 위젯과 같은 구성 */
+.preview { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.widget {
+  width: 100%; max-width: 230px;
+  background: var(--card);
+  border-radius: 18px;
+  padding: 12px 14px 14px;
+  display: flex; flex-direction: column;
+  box-shadow: 0 12px 30px -16px rgba(0, 0, 0, 0.8);
+}
+.w-head { display: flex; align-items: center; gap: 6px; }
+.w-meal { color: var(--accent); font-weight: 700; font-size: 1.05rem; }
+.w-place { color: var(--dim); font-size: 0.72rem; flex: 1; }
+.w-refresh { color: var(--dim); font-size: 0.9rem; }
+.w-date { color: var(--dim); font-size: 0.66rem; font-family: var(--font-mono); font-variant-numeric: tabular-nums; margin-bottom: 7px; }
+.w-items { margin: 0; padding: 0; list-style: none; font-size: 0.82rem; line-height: 1.5; }
+.caption { font-size: 0.75rem; color: var(--dim); }
+
+/* 폰 고르기 */
+.pick { display: flex; flex-direction: column; gap: 10px; }
+.choice {
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px;
+  width: 100%; text-align: left; cursor: pointer;
+  background: var(--card); color: var(--fg);
+  border: 1px solid var(--line); border-radius: 14px;
+  padding: 16px 18px;
+}
+.choice:active { background: var(--raise); }
+.choice.mine { border-color: var(--accent); }
+.choice-name { font-weight: 700; font-size: 1.1rem; }
+.choice-sub { display: block; font-size: 0.85rem; color: var(--dim); }
+.choice-arrow { color: var(--accent); font-size: 1.2rem; }
+.mine-tag {
+  margin-left: 6px; vertical-align: 2px;
+  font-size: 0.68rem; font-weight: 700;
+  background: var(--accent); color: var(--accent-ink);
+  border-radius: 999px; padding: 1px 7px;
+}
+
+/* 운영시간 */
+.hours { border-top: 1px solid var(--line); padding-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+.hours table { border-collapse: collapse; font-size: 0.82rem; width: 100%; }
+.hours th, .hours td { text-align: left; padding: 3px 0; font-weight: 400; }
+.hours th { color: var(--dim); width: 4.5em; }
+.hours td { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.hours thead th { font-size: 0.75rem; }
+
+/* 설치 화면 */
+.back { align-self: flex-start; background: none; border: 0; padding: 4px 0; cursor: pointer; color: var(--dim); font-size: 0.9rem; }
+.download {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  width: 100%; border: 0; border-radius: 14px; cursor: pointer; text-decoration: none;
+  background: var(--accent); color: var(--accent-ink);
+  padding: 16px;
+}
+.download b { font-size: 1.15rem; }
+.download small { font-size: 0.8rem; opacity: 0.8; }
+.note { font-size: 0.85rem; color: var(--dim); }
+
+ol.steps { margin: 0; padding: 0; list-style: none; counter-reset: s; display: flex; flex-direction: column; gap: 18px; }
+ol.steps > li { counter-increment: s; display: grid; grid-template-columns: 26px 1fr; gap: 12px; }
+ol.steps > li::before {
+  content: counter(s);
+  width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: var(--font-mono); font-size: 0.8rem;
+  background: var(--raise); color: var(--accent);
+}
+.step { min-width: 0; display: flex; flex-direction: column; gap: 6px; padding-top: 1px; }
+.step-title { font-weight: 700; }
+.step-desc { color: var(--dim); font-size: 0.92rem; }
+.ui { color: var(--fg); background: var(--raise); border-radius: 5px; padding: 0 5px; white-space: nowrap; }
+code.param { font-family: var(--font-mono); color: var(--accent); background: var(--raise); border-radius: 5px; padding: 0 5px; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  align-self: flex-start;
+  background: var(--card); color: var(--fg); border: 1px solid var(--accent);
+  border-radius: 10px; padding: 8px 14px; font-weight: 500; font-size: 0.9rem;
+  text-decoration: none; cursor: pointer;
+}
+.btn.done { background: var(--accent); color: var(--accent-ink); }
+
+details.code { border: 1px solid var(--line); border-radius: 10px; background: var(--card); min-width: 0; }
+details.code summary { cursor: pointer; padding: 8px 12px; font-size: 0.85rem; color: var(--dim); }
+details.code pre {
+  margin: 0; padding: 10px 12px; max-height: 220px; overflow: auto;
+  font-family: var(--font-mono); font-size: 0.72rem; line-height: 1.5;
+  border-top: 1px solid var(--line); white-space: pre; color: var(--fg);
+}
+
+.foot { font-size: 0.78rem; color: var(--dim); text-align: center; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+
+  <div class="inapp" id="inapp" hidden>
+    <strong>인스타 안에서 열려 있어요</strong>
+    <span class="dim">여기선 다운로드가 안 될 수 있어요. 오른쪽 위 ⋮ 눌러서 외부 브라우저로 열어주세요.</span>
+  </div>
+
+  <!-- 처음 화면 -->
+  <section id="view-choose" class="view">
+    <div class="intro">
+      <p class="label">강원학사 관악 · 도봉</p>
+      <h1>학사 식단을<br>홈 화면에 띄워두기</h1>
+      <p class="dim">다음 끼니 메뉴가 위젯에 떠요. 저녁 8시가 지나면 내일 아침으로 넘어가고, 연휴처럼 식단이 비는 날은 건너뛰고 다음에 밥 나오는 날을 보여줘요.</p>
+    </div>
+
+    <div class="preview">
+      <div class="widget" aria-label="위젯 예시">
+        <div class="w-head">
+          <span class="w-meal">점심</span>
+          <span class="w-place">도봉학사</span>
+          <span class="w-refresh" aria-hidden="true">↻</span>
+        </div>
+        <span class="w-date">09.11 (금)  12:00~13:00</span>
+        <ul class="w-items">
+          <li>오므라이스&amp;양송이데미소스</li>
+          <li>애호박고추장국</li>
+          <li>통소세지구이</li>
+          <li>포기김치</li>
+          <li>과일샐러드</li>
+          <li>검은콩두유</li>
+        </ul>
+      </div>
+      <span class="caption">9월 11일 도봉학사 점심으로 만든 예시</span>
+    </div>
+
+    <h2>폰 종류 고르기</h2>
+    <div class="pick">
+      <button class="choice" id="pick-android" type="button" data-go="android">
+        <span>
+          <span class="choice-name">안드로이드</span><span class="mine-tag" id="tag-android" hidden>이 폰</span>
+          <span class="choice-sub">갤럭시 등 · 앱 설치하고 위젯 추가</span>
+        </span>
+        <span class="choice-arrow" aria-hidden="true">→</span>
+      </button>
+      <button class="choice" id="pick-ios" type="button" data-go="ios">
+        <span>
+          <span class="choice-name">아이폰</span><span class="mine-tag" id="tag-ios" hidden>이 폰</span>
+          <span class="choice-sub">Scriptable 앱에 코드 붙여넣기</span>
+        </span>
+        <span class="choice-arrow" aria-hidden="true">→</span>
+      </button>
+    </div>
+
+    <div class="hours">
+      <p class="label">식당 운영시간 (관악·도봉 같음)</p>
+      <table>
+        <thead><tr><th></th><th>월~토</th><th>일</th></tr></thead>
+        <tbody>
+          <tr><th>아침</th><td>07:00~08:30</td><td>08:00~09:00</td></tr>
+          <tr><th>점심</th><td>12:00~13:00</td><td>13:00~14:00</td></tr>
+          <tr><th>저녁</th><td>18:30~20:00</td><td>18:30~20:00</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 안드로이드 -->
+  <section id="view-android" class="view" hidden>
+    <button class="back" type="button" data-go="choose">← 처음으로</button>
+    <div class="intro">
+      <p class="label">안드로이드</p>
+      <h2>앱 설치하기</h2>
+    </div>
+
+    <a class="download" id="apk-btn" href="#">
+      <b>APK 받기</b>
+      <small id="apk-meta"></small>
+    </a>
+    <p class="note" id="apk-note">아직 플레이 스토어에 없어서 설치 파일로 받아요. 누르면 바로 다운로드돼요.</p>
+
+    <ol class="steps">
+      <li><div class="step">
+        <span class="step-title">받은 파일 열기</span>
+        <span class="step-desc">알림창에서 <span class="ui">GWHS_MENU….apk</span> 누르기. 알림이 없으면 내 파일 → 다운로드에 있어요.</span>
+      </div></li>
+      <li><div class="step">
+        <span class="step-title">출처를 알 수 없는 앱 허용</span>
+        <span class="step-desc">처음 한 번만 물어봐요. <span class="ui">설정</span> 눌러서 <span class="ui">이 출처 허용</span> 켜고 뒤로 가기.</span>
+      </div></li>
+      <li><div class="step">
+        <span class="step-title">설치</span>
+        <span class="step-desc">Play 프로텍트 창이 뜨면 <span class="ui">무시하고 설치</span>. 스토어에 안 올라간 앱이라 뜨는 거예요.</span>
+      </div></li>
+      <li><div class="step">
+        <span class="step-title">위젯 추가</span>
+        <span class="step-desc">홈 화면 빈 곳 길게 누르기 → <span class="ui">위젯</span> → <span class="ui">강원학사 식단</span> → 관악이나 도봉 중에 내 학사 고르기.</span>
+      </div></li>
+    </ol>
+    <p class="note">위젯 오른쪽 위 ↻ 누르면 새로고침, 위젯을 누르면 일주일 식단이 열려요. 새 버전은 똑같이 받아서 설치하면 덮어써져요.</p>
+  </section>
+
+  <!-- 아이폰 -->
+  <section id="view-ios" class="view" hidden>
+    <button class="back" type="button" data-go="choose">← 처음으로</button>
+    <div class="intro">
+      <p class="label">아이폰</p>
+      <h2>Scriptable로 위젯 만들기</h2>
+      <p class="dim">Scriptable은 무료 앱이에요. 코드를 한 번 붙여넣으면 그다음부턴 위젯만 보면 돼요.</p>
+    </div>
+
+    <ol class="steps">
+      <li><div class="step">
+        <span class="step-title">Scriptable 설치</span>
+        <a class="btn" href="https://apps.apple.com/kr/app/scriptable/id1405459188" target="_blank" rel="noopener">앱스토어에서 받기 ↗</a>
+      </div></li>
+      <li><div class="step">
+        <span class="step-title">코드 복사</span>
+        <button class="btn" id="copy-btn" type="button">코드 복사</button>
+        <details class="code">
+          <summary>코드 보기</summary>
+          <pre id="code"></pre>
+        </details>
+      </div></li>
+      <li><div class="step">
+        <span class="step-title">Scriptable에 붙여넣기</span>
+        <span class="step-desc">Scriptable 열고 오른쪽 위 <span class="ui">+</span> → 빈 화면 길게 눌러 <span class="ui">붙여넣기</span> → 맨 위 제목을 <span class="ui">강원학사 식단</span>으로 바꾸고 <span class="ui">Done</span>.</span>
+      </div></li>
+      <li><div class="step">
+        <span class="step-title">홈 화면에 위젯 추가</span>
+        <span class="step-desc">홈 화면 빈 곳 길게 누르기 → 왼쪽 위 <span class="ui">편집</span> → <span class="ui">위젯 추가</span> → <span class="ui">Scriptable</span> 검색 → 크기 고르고 추가.</span>
+      </div></li>
+      <li><div class="step">
+        <span class="step-title">학사 고르기</span>
+        <span class="step-desc">추가한 위젯 길게 누르기 → <span class="ui">위젯 편집</span>. Script는 <span class="ui">강원학사 식단</span>, Parameter에는 도봉이면 <code class="param">dobong</code>, 관악이면 <code class="param">gwanag</code> 입력.</span>
+        <span class="step-desc">점심만 계속 보고 싶으면 <code class="param">dobong,점심</code>처럼 쓰면 돼요.</span>
+      </div></li>
+    </ol>
+  </section>
+
+  <p class="foot">강원인재원 홈페이지 주간식단을 가져와서 보여줘요.<br>학사에서 만든 공식 앱은 아니에요.</p>
+</div>
+
+<script type="text/plain" id="scriptable-src">
+// 강원학사 식단 위젯 (Scriptable)
+// 위젯 파라미터: gwanag | dobong  (비우면 gwanag)
+//   예) "dobong"       -> 도봉, 다음 끼니 자동
+//       "dobong,점심"  -> 도봉, 점심만
+//
+// 연휴·방학 등으로 식단이 빈 날은 건너뛰고 다음 급식을 찾습니다.
+// 탐색 범위(기본 14일) 안에 아무것도 없으면 미등록 상태로 표시합니다.
+
+const BASE = "https://injae.gwd.go.kr/others/food/menu/week";
+const CAMPUS = { gwanag: "관악학사", dobong: "도봉학사" };
+const MEALS = ["아침", "점심", "저녁"];
+
+const HORIZON_DAYS = 14; // 앞으로 며칠까지 찾아볼지
+const MAX_WEEKS = 3;     // 한 번에 받아올 주 수 상한
+
+// 식당 운영시간 (일요일만 다름)
+const CUTOFF = {
+  sun: { 아침: 9 * 60, 점심: 14 * 60, 저녁: 20 * 60 },
+  etc: { 아침: 8 * 60 + 30, 점심: 13 * 60, 저녁: 20 * 60 },
+};
+const OPEN = {
+  sun: { 아침: "08:00~09:00", 점심: "13:00~14:00", 저녁: "18:30~20:00" },
+  etc: { 아침: "07:00~08:30", 점심: "12:00~13:00", 저녁: "18:30~20:00" },
+};
+const WD = ["일", "월", "화", "수", "목", "금", "토"];
+
+// ---------- 파라미터 ----------
+const param = (args.widgetParameter || "").trim();
+const [rawCampus, rawMeal] = param.split(",").map((s) => (s || "").trim());
+const campus = CAMPUS[rawCampus] ? rawCampus : "gwanag";
+const fixedMeal = MEALS.includes(rawMeal) ? rawMeal : null;
+
+// ---------- 날짜 유틸 ----------
+const fmt = (d) => {
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
+const addDays = (d, n) => {
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  return x;
+};
+const midnight = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const weekRange = (d) => {
+  const s = addDays(d, -d.getDay());
+  return [fmt(s), fmt(addDays(s, 6))];
+};
+const daysBetween = (a, b) =>
+  Math.round((midnight(b) - midnight(a)) / 86400000);
+
+// 지금 시각 기준 탐색 시작점
+function startPoint() {
+  const now = new Date();
+  const mins = now.getHours() * 60 + now.getMinutes();
+  const table = now.getDay() === 0 ? CUTOFF.sun : CUTOFF.etc;
+  for (let i = 0; i < MEALS.length; i++) {
+    if (mins < table[MEALS[i]]) return { date: midnight(now), mealIdx: i };
+  }
+  return { date: midnight(addDays(now, 1)), mealIdx: 0 }; // 저녁 지나면 내일부터
+}
+
+// ---------- HTML 파싱 ----------
+function decode(s) {
+  return s
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&middot;/g, "·")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&");
+}
+
+function parseWeek(html) {
+  const tb = html.match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/i);
+  if (!tb) throw new Error("식단표를 찾지 못했습니다");
+  const rows = tb[1].match(/<tr[^>]*>[\s\S]*?<\/tr>/gi) || [];
+  if (rows.length < 2) throw new Error("식단표 구조가 바뀐 것 같습니다");
+
+  const dates = rows[0].match(/\d{4}-\d{2}-\d{2}/g) || [];
+  const meals = {};
+
+  for (const row of rows.slice(1)) {
+    const cells = row.match(/<t[dh][^>]*>[\s\S]*?<\/t[dh]>/gi) || [];
+    if (!cells.length) continue;
+
+    const label = decode(cells[0].replace(/<[^>]+>/g, "\n")).replace(/\s+/g, "");
+    if (!MEALS.includes(label)) continue;
+
+    meals[label] = cells.slice(1).map((cell) => {
+      const inner = cell
+        .replace(/^<t[dh][^>]*>/i, "")
+        .replace(/<\/t[dh]>$/i, "")
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<[^>]+>/g, "");
+      const lines = decode(inner)
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      // "&소스" 처럼 &로 시작하면 앞 메뉴의 이어짐
+      const out = [];
+      for (const it of lines) {
+        if (it.startsWith("&") && out.length) out[out.length - 1] += it;
+        else out.push(it);
+      }
+      return out;
+    });
+  }
+  return { dates, meals };
+}
+
+// ---------- 네트워크 + 캐시 ----------
+const fm = FileManager.local();
+const cacheDir = fm.joinPath(fm.cacheDirectory(), "gwhaksa");
+if (!fm.fileExists(cacheDir)) fm.createDirectory(cacheDir, true);
+
+async function loadWeek(campus, start, end) {
+  const path = fm.joinPath(cacheDir, `${campus}_${start}.json`);
+  try {
+    const req = new Request(`${BASE}/${campus}/${start}/${end}`);
+    req.timeoutInterval = 12;
+    const html = await req.loadString();
+    const data = parseWeek(html);
+    if (!data.dates.length) throw new Error("날짜가 비었습니다");
+    fm.writeString(path, JSON.stringify({ savedAt: Date.now(), data }));
+    return { data, stale: false };
+  } catch (e) {
+    if (fm.fileExists(path)) {
+      return { data: JSON.parse(fm.readString(path)).data, stale: true };
+    }
+    throw e;
+  }
+}
+
+// 주 단위 로더 (요청 수 상한 + 중복 방지)
+function makeWeekLoader(campus) {
+  const cache = new Map();
+  const order = [];
+  const state = { stale: false, firstError: null };
+
+  const get = async (d) => {
+    const [s, e] = weekRange(d);
+    if (!cache.has(s)) {
+      if (cache.size >= MAX_WEEKS) return null;
+      try {
+        const r = await loadWeek(campus, s, e);
+        if (r.stale) state.stale = true;
+        cache.set(s, r.data);
+        order.push({ start: s, data: r.data });
+      } catch (err) {
+        if (!state.firstError) state.firstError = err;
+        cache.set(s, null);
+      }
+    }
+    return cache.get(s);
+  };
+  return { get, state, order };
+}
+
+// ---------- 다음 급식 찾기 ----------
+async function findMeal(start, getWeek) {
+  let lastChecked = null;
+  for (let off = 0; off <= HORIZON_DAYS; off++) {
+    const d = addDays(start.date, off);
+    const wk = await getWeek(d);
+    if (!wk) break;
+    const idx = wk.dates.indexOf(fmt(d));
+    if (idx < 0) continue;
+
+    const from = off === 0 ? start.mealIdx : 0;
+    for (let mi = from; mi < MEALS.length; mi++) {
+      const m = MEALS[mi];
+      if (fixedMeal && m !== fixedMeal) continue;
+      lastChecked = d;
+      const items = (wk.meals[m] || [])[idx] || [];
+      if (items.length) return { date: d, meal: m, items };
+    }
+  }
+  return { date: null, meal: null, items: [], lastChecked };
+}
+
+// ---------- 위젯 ----------
+const COLOR = {
+  bg1: new Color("#2B2118"),
+  bg2: new Color("#1A1410"),
+  accent: new Color("#D18A2E"),
+  muted: new Color("#7A6A55"),
+  text: Color.white(),
+  dim: new Color("#FFFFFF", 0.55),
+};
+
+function baseWidget() {
+  const w = new ListWidget();
+  const g = new LinearGradient();
+  g.colors = [COLOR.bg1, COLOR.bg2];
+  g.locations = [0, 1];
+  w.backgroundGradient = g;
+  w.setPadding(14, 15, 14, 15);
+  w.url = `https://injae.gwd.go.kr/gwd/haksa_life/haksa_menu/haksa_menu${
+    campus === "gwanag" ? "01" : "02"
+  }`;
+  w.refreshAfterDate = new Date(Date.now() + 30 * 60 * 1000);
+  return w;
+}
+
+function footnote(w, text) {
+  const s = w.addText(text);
+  s.font = Font.systemFont(8);
+  s.textColor = COLOR.dim;
+}
+
+function buildFound(w, { date, meal, items, stale }) {
+  const small = config.widgetFamily === "small";
+  const gap = daysBetween(new Date(), date);
+
+  const head = w.addStack();
+  head.centerAlignContent();
+  const t = head.addText(meal);
+  t.font = Font.boldSystemFont(small ? 15 : 17);
+  t.textColor = COLOR.accent;
+  head.addSpacer(6);
+  const sub = head.addText(
+    small ? CAMPUS[campus].replace("학사", "") : CAMPUS[campus]
+  );
+  sub.font = Font.systemFont(small ? 10 : 11);
+  sub.textColor = COLOR.dim;
+  head.addSpacer();
+
+  const openSet = date.getDay() === 0 ? OPEN.sun : OPEN.etc;
+  let when = `${fmt(date).slice(5)} (${WD[date.getDay()]})`;
+  if (gap === 1) when += " · 내일";
+  else if (gap > 1) when += ` · ${gap}일 뒤`;
+  const d = w.addText(`${when}  ${openSet[meal]}`);
+  d.font = Font.systemFont(small ? 9 : 10);
+  d.textColor = gap > 1 ? COLOR.accent : COLOR.dim;
+
+  w.addSpacer(small ? 6 : 8);
+
+  const limit = small ? 7 : config.widgetFamily === "large" ? 20 : 11;
+  for (const it of items.slice(0, limit)) {
+    const isTag = it.startsWith("[");
+    const line = w.addText(isTag ? it.replace(/[\[\]]/g, "") : it);
+    line.font = isTag
+      ? Font.mediumSystemFont(small ? 9 : 10)
+      : Font.systemFont(small ? 11 : 13);
+    line.textColor = isTag ? COLOR.accent : COLOR.text;
+    line.lineLimit = 1;
+    line.minimumScaleFactor = 0.8;
+  }
+  if (items.length > limit) {
+    const more = w.addText(`＋${items.length - limit}`);
+    more.font = Font.systemFont(small ? 9 : 10);
+    more.textColor = COLOR.dim;
+  }
+
+  w.addSpacer();
+  if (stale) footnote(w, "· 오프라인 (저장된 식단)");
+}
+
+function buildNone(w, { start, lastChecked, stale }) {
+  const small = config.widgetFamily === "small";
+
+  const head = w.addStack();
+  head.centerAlignContent();
+  const t = head.addText("식단 미등록");
+  t.font = Font.boldSystemFont(small ? 14 : 16);
+  t.textColor = COLOR.muted;
+  head.addSpacer(6);
+  const sub = head.addText(
+    small ? CAMPUS[campus].replace("학사", "") : CAMPUS[campus]
+  );
+  sub.font = Font.systemFont(small ? 10 : 11);
+  sub.textColor = COLOR.dim;
+  head.addSpacer();
+
+  w.addSpacer(small ? 8 : 10);
+
+  const from = fmt(start.date).slice(5);
+  const to = lastChecked ? fmt(lastChecked).slice(5) : null;
+  const r = w.addText(to && to !== from ? `${from} ~ ${to}` : from);
+  r.font = Font.systemFont(small ? 12 : 14);
+  r.textColor = COLOR.text;
+
+  const msg = w.addText("등록된 식단이 없습니다");
+  msg.font = Font.systemFont(small ? 10 : 11);
+  msg.textColor = COLOR.dim;
+  msg.lineLimit = 2;
+
+  w.addSpacer(4);
+  const hint = w.addText("연휴·방학이거나 아직 게시 전일 수 있습니다");
+  hint.font = Font.systemFont(small ? 8 : 9);
+  hint.textColor = COLOR.dim;
+  hint.lineLimit = 2;
+  hint.minimumScaleFactor = 0.8;
+
+  w.addSpacer();
+  if (stale) footnote(w, "· 오프라인 (저장된 식단)");
+}
+
+// ---------- 실행 ----------
+let widget = baseWidget();
+
+try {
+  const start = startPoint();
+  const loader = makeWeekLoader(campus);
+  const found = await findMeal(start, loader.get);
+
+  if (!loader.order.length) {
+    throw loader.state.firstError || new Error("식단을 받아오지 못했습니다");
+  }
+
+  if (found.date) {
+    buildFound(widget, { ...found, stale: loader.state.stale });
+  } else {
+    buildNone(widget, {
+      start,
+      lastChecked: found.lastChecked,
+      stale: loader.state.stale,
+    });
+  }
+
+  // 앱에서 직접 실행하면 받아온 주 전체를 표로 확인
+  if (!config.runsInWidget) {
+    const table = new UITable();
+    table.showSeparators = true;
+    for (const wk of loader.order) {
+      for (let i = 0; i < wk.data.dates.length; i++) {
+        const dateStr = wk.data.dates[i];
+        const dow = WD[new Date(dateStr + "T00:00:00").getDay()];
+        const h = new UITableRow();
+        h.isHeader = true;
+        h.addText(`${dateStr} (${dow})`);
+        table.addRow(h);
+        for (const m of MEALS) {
+          const list = (wk.data.meals[m] || [])[i] || [];
+          const r = new UITableRow();
+          r.addText(m, list.join(", ") || "—");
+          table.addRow(r);
+        }
+      }
+    }
+    await table.present();
+  }
+} catch (e) {
+  widget = baseWidget();
+  const t = widget.addText("식단을 불러오지 못했습니다");
+  t.font = Font.systemFont(12);
+  t.textColor = COLOR.text;
+  const m = widget.addText(String(e.message || e));
+  m.font = Font.systemFont(9);
+  m.textColor = COLOR.dim;
+  m.lineLimit = 3;
+  if (!config.runsInWidget) console.error(e);
+}
+
+if (config.runsInWidget) Script.setWidget(widget);
+else await widget.presentSmall();
+Script.complete();
+</script>
+
+<script>
+// ===== 링크는 여기만 바꾸면 됨 =====
+const CONFIG = {
+  apkUrl: "GWHS_MENU.apk",   // 같은 저장소의 APK
+  apkLabel: "강원학사 식단 v1.0.2 · 약 8MB",
+};
+// ==================================
+
+const SCRIPTABLE_CODE = document.getElementById("scriptable-src").textContent.replace(/^\n/, "");
+
+const ua = navigator.userAgent || "";
+const isAndroid = /Android/i.test(ua);
+const isIOS = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const inInstagram = /Instagram/i.test(ua);
+
+const views = { choose: "view-choose", android: "view-android", ios: "view-ios" };
+function show(name) {
+  if (!views[name]) name = "choose";
+  for (const [k, id] of Object.entries(views)) document.getElementById(id).hidden = k !== name;
+  document.getElementById("inapp").hidden = !(inInstagram && isAndroid && name === "android");
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll("[data-go]").forEach(el =>
+  el.addEventListener("click", () => {
+    const name = el.dataset.go;
+    show(name);
+    try { history.replaceState(null, "", name === "choose" ? location.pathname : "#" + name); } catch (e) {}
+  })
+);
+
+// 지금 쓰는 폰 표시
+if (isAndroid) { document.getElementById("tag-android").hidden = false; document.getElementById("pick-android").classList.add("mine"); }
+if (isIOS) { document.getElementById("tag-ios").hidden = false; document.getElementById("pick-ios").classList.add("mine"); }
+
+// APK 버튼
+const apkBtn = document.getElementById("apk-btn");
+document.getElementById("apk-meta").textContent = CONFIG.apkLabel;
+if (CONFIG.apkUrl) {
+  if (inInstagram && isAndroid) {
+    // 인스타 내장 브라우저에선 크롬으로 넘겨서 받기
+    const u = new URL(CONFIG.apkUrl, location.href);
+    apkBtn.href = "intent://" + u.host + u.pathname + u.search +
+      "#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=" + encodeURIComponent(u.href) + ";end";
+  } else {
+    apkBtn.href = CONFIG.apkUrl;
+    apkBtn.setAttribute("download", "GWHS_MENU.apk");
+  }
+} else {
+  apkBtn.addEventListener("click", e => {
+    e.preventDefault();
+    document.getElementById("apk-note").textContent = "다운로드 링크가 아직 안 붙어 있어요. 조금만 기다려주세요.";
+  });
+}
+
+// 아이폰 코드 복사
+const codeEl = document.getElementById("code");
+codeEl.textContent = SCRIPTABLE_CODE;
+const copyBtn = document.getElementById("copy-btn");
+copyBtn.addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(SCRIPTABLE_CODE);
+    copyBtn.textContent = "복사됐어요";
+    copyBtn.classList.add("done");
+  } catch (e) {
+    const d = codeEl.closest("details"); d.open = true;
+    const r = document.createRange(); r.selectNodeContents(codeEl);
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    copyBtn.textContent = "선택됐어요. 길게 눌러서 복사";
+  }
+});
+
+// #android, #ios 로 바로 열기
+show((location.hash || "").replace("#", "") || "choose");
+</script>
+
+</body>
+</html>
